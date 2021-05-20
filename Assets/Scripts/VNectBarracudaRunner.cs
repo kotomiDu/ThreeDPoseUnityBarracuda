@@ -6,7 +6,6 @@ using Unity.Barracuda;
 
 using System;
 using System.Runtime.InteropServices;
-using System.IO;
 
 
 /// <summary>
@@ -239,6 +238,17 @@ public class VNectBarracudaRunner : MonoBehaviour
         , heatMap3DSize
         , out offset3DPtr
         , out heatMap3DPtr);
+       /* string filePath = Application.dataPath + "/Materials/InitImg.png";
+        inferModel(context
+        , filePath
+        , filePath
+        , filePath
+        , InputImageSize
+        , InputImageSize
+        , offset3DSize
+        , heatMap3DSize
+        , out offset3DPtr
+        , out heatMap3DPtr);*/
 
         Marshal.Copy(offset3DPtr, offset3D, 0, offset3DSize);
         Marshal.FreeCoTaskMem(offset3DPtr);
@@ -288,11 +298,9 @@ public class VNectBarracudaRunner : MonoBehaviour
         }*/
         
         ovinput = getTexPtr(toTexture2D(videoCapture.MainTexture));
-
-        //Debug.Log("Test" + ovinputs[inputName_1]);
-        if (ovinputs[inputName_1] .Equals( IntPtr.Zero))
+        Debug.Log("Test1");
+        if (ovinputs[inputName_1] == IntPtr.Zero)
         {
-            Debug.Log("test1");
             ovinputs[inputName_1] = ovinput;
             ovinputs[inputName_2] = getTexPtr(toTexture2D(videoCapture.MainTexture));
             ovinputs[inputName_3] = getTexPtr(toTexture2D(videoCapture.MainTexture));
@@ -307,7 +315,7 @@ public class VNectBarracudaRunner : MonoBehaviour
         }
 
       
-        StartCoroutine(ExecuteModelAsync());
+        //StartCoroutine(ExecuteModelAsync());
     }
 
     /// <summary>
@@ -348,8 +356,8 @@ public class VNectBarracudaRunner : MonoBehaviour
             b_outputs[i].Dispose();
         }
         */
-       
-      inferModel(context
+        Debug.Log(offset3DPtr);
+      /* inferModel(context
       , ovinputs[inputName_1]
       , ovinputs[inputName_2]
       , ovinputs[inputName_3]
@@ -358,22 +366,18 @@ public class VNectBarracudaRunner : MonoBehaviour
       , offset3DSize
       , heatMap3DSize
       , out offset3DPtr
-      , out heatMap3DPtr);
+      , out heatMap3DPtr);*/
 
-        if(offset3DPtr != IntPtr.Zero && heatMap3DPtr != IntPtr.Zero){
-            Marshal.Copy(offset3DPtr
-            , offset3D
+        Marshal.Copy(offset3DPtr
+           , offset3D
+           , 0
+           , offset3DSize);
+        Marshal.FreeCoTaskMem(offset3DPtr);
+        Marshal.Copy(heatMap3DPtr
+            , heatMap3D
             , 0
-            , offset3DSize);
-            Marshal.FreeCoTaskMem(offset3DPtr);
-            Marshal.Copy(heatMap3DPtr
-                , heatMap3D
-                , 0
-                , heatMap3DSize);
-            Marshal.FreeCoTaskMem(heatMap3DPtr);
-        }
-
-        Debug.Log(heatMap3D[1000]);
+            , heatMap3DSize);
+        Marshal.FreeCoTaskMem(heatMap3DPtr);
         yield return new WaitForSeconds(WaitTimeModelLoad);
 
         PredictPose();
@@ -478,19 +482,17 @@ public class VNectBarracudaRunner : MonoBehaviour
     }
 
 
-    Texture2D toTexture2D(RenderTexture texture)
+    Texture2D toTexture2D(RenderTexture rTex)
     {
-       // Texture2D tex = new Texture2D(texture.width, texture.height, TextureFormat.RGB24, false);
-        Texture2D tex = new Texture2D(texture.width, texture.height, TextureFormat.ARGB32, false);
+        
         // ReadPixels looks at the active RenderTexture.
-        RenderTexture.active = texture;
-        tex.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
+        RenderTexture.active = rTex;
+        Texture2D tex = new Texture2D(rTex.width, rTex.height, TextureFormat.RGB565, false);
+        tex.ReadPixels(new Rect(0, 0, rTex.width, rTex.height), 0, 0);
+        Debug.Log("Test2");
         tex.Apply();
-        //File.WriteAllBytes(Application.persistentDataPath + "/" + fileindex + "pose.png", (byte[])tex.EncodeToPNG());
-        //fileindex++;
         return tex;
     }
-    private int fileindex = 0;
 
     IntPtr getTexPtr(Texture2D tex)
     {
