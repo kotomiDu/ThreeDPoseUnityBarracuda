@@ -223,6 +223,7 @@ public class VNectBarracudaRunner : MonoBehaviour
 
     private void UpdateVNectModel()
     {
+        toTexture2D(videoCapture.MainTexture);
         input = new Tensor(videoCapture.MainTexture);
         if (inputs[inputName_1] == null)
         {
@@ -370,5 +371,15 @@ public class VNectBarracudaRunner : MonoBehaviour
         measurement.P.x = KalmanParamR * (measurement.P.x + KalmanParamQ) / (KalmanParamR + measurement.P.x + KalmanParamQ);
         measurement.P.y = KalmanParamR * (measurement.P.y + KalmanParamQ) / (KalmanParamR + measurement.P.y + KalmanParamQ);
         measurement.P.z = KalmanParamR * (measurement.P.z + KalmanParamQ) / (KalmanParamR + measurement.P.z + KalmanParamQ);
+    }
+
+    Texture2D toTexture2D(RenderTexture rTex)
+    {
+        Texture2D tex = new Texture2D(rTex.width, rTex.height, TextureFormat.RGB24, false);
+        // ReadPixels looks at the active RenderTexture.
+        RenderTexture.active = rTex;
+        tex.ReadPixels(new Rect(0, 0, rTex.width, rTex.height), 0, 0);
+        tex.Apply();
+        return tex;
     }
 }
