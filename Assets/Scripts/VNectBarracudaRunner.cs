@@ -4,6 +4,11 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Barracuda;
 
+using System;
+using System.Runtime.InteropServices;
+using System.IO;
+
+
 /// <summary>
 /// Define Joint points
 /// </summary>
@@ -137,6 +142,22 @@ public class VNectBarracudaRunner : MonoBehaviour
     private float Countdown = 0;
     public Texture2D InitImg;
 
+    //Lets make our calls from the Plugin
+    [DllImport("network.dll", EntryPoint = "createModel")]
+    private static extern IntPtr createModel();
+    [DllImport("network.dll", EntryPoint = "initModel")]
+    private static extern bool initModel(IntPtr model, string modelpath, string device);
+    [DllImport("network.dll", EntryPoint = "inferModel")]
+    private static extern void inferModel(IntPtr model
+        , IntPtr texture1, IntPtr texture2, IntPtr texture3, int width, int height
+        ,  int offset3Dsize, int heatmap3Dsize,out IntPtr offset3Dresult, out IntPtr heatmap3Dresult);
+
+    private IntPtr context;
+    int offset3DSize = 2016 * 28 * 28;
+    int heatMap3DSize = 672 * 28 * 28;
+    IntPtr offset3DPtr, heatMap3DPtr;
+    IntPtr ovinput;
+
     private void Start()
     {
         // Initialize 
@@ -159,15 +180,21 @@ public class VNectBarracudaRunner : MonoBehaviour
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
 
         // Init model
-        _model = ModelLoader.Load(NNModel, Verbose);
-        _worker = WorkerFactory.CreateWorker(WorkerType, _model, Verbose);
+        //_model = ModelLoader.Load(NNModel, Verbose);
+        //_worker = WorkerFactory.CreateWorker(WorkerType, _model, Verbose);
+
+        //????  Init openvino Model
+        context = createModel();
+        string modelPath = Application.dataPath + "/Scripts/Model/OV_FP32/Resnet34_3inputs_448x448_20200609.xml";
+        bool success = initModel(context, modelPath, "CPU");
+        Debug.Log(success);
 
         StartCoroutine("WaitLoad");
-
     }
 
     private void Update()
     {
+      
         if (!Lock)
         {
             UpdateVNectModel();
@@ -176,29 +203,49 @@ public class VNectBarracudaRunner : MonoBehaviour
 
     private IEnumerator WaitLoad()
     {
-        inputs[inputName_1] = new Tensor(InitImg);
-        inputs[inputName_2] = new Tensor(InitImg);
-        inputs[inputName_3] = new Tensor(InitImg);
+        /* inputs[inputName_1] = new Tensor(InitImg);
+         inputs[inputName_2] = new Tensor(InitImg);
+         inputs[inputName_3] = new Tensor(InitImg);
 
-        // Create input and Execute model
-        yield return _worker.StartManualSchedule(inputs);
+         // Create input and Execute model
+         yield return _worker.StartManualSchedule(inputs);
 
-        // Get outputs
-        for (var i = 2; i < _model.outputs.Count; i++)
-        {
-            b_outputs[i] = _worker.PeekOutput(_model.outputs[i]);
-        }
+         // Get outputs
+         for (var i = 2; i < _model.outputs.Count; i++)
+         {
+             b_outputs[i] = _worker.PeekOutput(_model.outputs[i]);
+         }
 
-        // Get data from outputs
-        offset3D = b_outputs[2].data.Download(b_outputs[2].shape);
-        heatMap3D = b_outputs[3].data.Download(b_outputs[3].shape);
+         // Get data from outputs
+         offset3D = b_outputs[2].data.Download(b_outputs[2].shape);
+         heatMap3D = b_outputs[3].data.Download(b_outputs[3].shape);
 
-        // Release outputs
-        for (var i = 2; i < b_outputs.Length; i++)
-        {
-            b_outputs[i].Dispose();
-        }
+         // Release outputs
+         for (var i = 2; i < b_outputs.Length; i++)
+         {
+             b_outputs[i].Dispose();
+         }*/
 
+        // openvino execution
+        Texture2D readableTex = duplicateTexture(InitImg);
+
+        inferModel(context
+        , getTexPtr(readableTex)
+        , getTexPtr(readableTex)
+        , getTexPtr(readableTex)
+        , InputImageSize
+        , InputImageSize
+        , offset3DSize
+        , heatMap3DSize
+        , out offset3DPtr
+        , out heatMap3DPtr);
+
+        Marshal.Copy(offset3DPtr, offset3D, 0, offset3DSize);
+        Marshal.FreeCoTaskMem(offset3DPtr);
+
+        Marshal.Copy(heatMap3DPtr, heatMap3D, 0, heatMap3DSize);
+        Marshal.FreeCoTaskMem(heatMap3DPtr);
+        Debug.Log(offset3D[100]);
         // Init VNect model
         jointPoints = VNectModel.Init();
 
@@ -223,6 +270,7 @@ public class VNectBarracudaRunner : MonoBehaviour
 
     private void UpdateVNectModel()
     {
+        /*
         input = new Tensor(videoCapture.MainTexture);
         if (inputs[inputName_1] == null)
         {
@@ -237,8 +285,28 @@ public class VNectBarracudaRunner : MonoBehaviour
             inputs[inputName_3] = inputs[inputName_2];
             inputs[inputName_2] = inputs[inputName_1];
             inputs[inputName_1] = input;
+        }*/
+        
+        ovinput = getTexPtr(toTexture2D(videoCapture.MainTexture));
+
+        //Debug.Log("Test" + ovinputs[inputName_1]);
+        if (ovinputs[inputName_1] .Equals( IntPtr.Zero))
+        {
+            Debug.Log("test1");
+            ovinputs[inputName_1] = ovinput;
+            ovinputs[inputName_2] = getTexPtr(toTexture2D(videoCapture.MainTexture));
+            ovinputs[inputName_3] = getTexPtr(toTexture2D(videoCapture.MainTexture));
+        }
+        else
+        {
+            //ovinputs[inputName_3].Dispose();
+
+            ovinputs[inputName_3] = ovinputs[inputName_2];
+            ovinputs[inputName_2] = ovinputs[inputName_1];
+            ovinputs[inputName_1] = ovinput;
         }
 
+      
         StartCoroutine(ExecuteModelAsync());
     }
 
@@ -250,9 +318,17 @@ public class VNectBarracudaRunner : MonoBehaviour
     Dictionary<string, Tensor> inputs = new Dictionary<string, Tensor>() { { inputName_1, null }, { inputName_2, null }, { inputName_3, null }, };
     Tensor[] b_outputs = new Tensor[4];
 
+    /// <summary>
+    /// OpenVINO input image
+    /// </summary>
+    /// <returns></returns>
+    
+    Dictionary<string, IntPtr> ovinputs = new Dictionary<string, IntPtr>() { { inputName_1, IntPtr.Zero }, { inputName_2, IntPtr.Zero }, { inputName_3, IntPtr.Zero }, };
+
     private IEnumerator ExecuteModelAsync()
     {
-        // Create input and Execute model
+        /*
+         * // Create input and Execute model
         yield return _worker.StartManualSchedule(inputs);
 
         // Get outputs
@@ -261,15 +337,44 @@ public class VNectBarracudaRunner : MonoBehaviour
             b_outputs[i] = _worker.PeekOutput(_model.outputs[i]);
         }
 
+       
         // Get data from outputs
         offset3D = b_outputs[2].data.Download(b_outputs[2].shape);
         heatMap3D = b_outputs[3].data.Download(b_outputs[3].shape);
-        
+
         // Release outputs
         for (var i = 2; i < b_outputs.Length; i++)
         {
             b_outputs[i].Dispose();
         }
+        */
+       
+      inferModel(context
+      , ovinputs[inputName_1]
+      , ovinputs[inputName_2]
+      , ovinputs[inputName_3]
+      , InputImageSize
+      , InputImageSize
+      , offset3DSize
+      , heatMap3DSize
+      , out offset3DPtr
+      , out heatMap3DPtr);
+
+        if(offset3DPtr != IntPtr.Zero && heatMap3DPtr != IntPtr.Zero){
+            Marshal.Copy(offset3DPtr
+            , offset3D
+            , 0
+            , offset3DSize);
+            Marshal.FreeCoTaskMem(offset3DPtr);
+            Marshal.Copy(heatMap3DPtr
+                , heatMap3D
+                , 0
+                , heatMap3DSize);
+            Marshal.FreeCoTaskMem(heatMap3DPtr);
+        }
+
+        Debug.Log(heatMap3D[1000]);
+        yield return new WaitForSeconds(WaitTimeModelLoad);
 
         PredictPose();
     }
@@ -370,5 +475,38 @@ public class VNectBarracudaRunner : MonoBehaviour
         measurement.P.x = KalmanParamR * (measurement.P.x + KalmanParamQ) / (KalmanParamR + measurement.P.x + KalmanParamQ);
         measurement.P.y = KalmanParamR * (measurement.P.y + KalmanParamQ) / (KalmanParamR + measurement.P.y + KalmanParamQ);
         measurement.P.z = KalmanParamR * (measurement.P.z + KalmanParamQ) / (KalmanParamR + measurement.P.z + KalmanParamQ);
+    }
+
+
+    Texture2D toTexture2D(RenderTexture texture)
+    {
+       // Texture2D tex = new Texture2D(texture.width, texture.height, TextureFormat.RGB24, false);
+        Texture2D tex = new Texture2D(texture.width, texture.height, TextureFormat.ARGB32, false);
+        // ReadPixels looks at the active RenderTexture.
+        RenderTexture.active = texture;
+        tex.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
+        tex.Apply();
+        //File.WriteAllBytes(Application.persistentDataPath + "/" + fileindex + "pose.png", (byte[])tex.EncodeToPNG());
+        //fileindex++;
+        return tex;
+    }
+    private int fileindex = 0;
+
+    IntPtr getTexPtr(Texture2D tex)
+    {
+        Color32[] pixel32 = tex.GetPixels32();
+        //Pin pixel32 array
+        GCHandle pixelHandle = GCHandle.Alloc(pixel32, GCHandleType.Pinned);
+        //Get the pinned address
+        return pixelHandle.AddrOfPinnedObject();
+    }
+
+    Texture2D duplicateTexture(Texture2D source)
+    {
+        byte[] pix = source.GetRawTextureData();
+        Texture2D readableText = new Texture2D(source.width, source.height, source.format, false);
+        readableText.LoadRawTextureData(pix);
+        readableText.Apply();
+        return readableText;
     }
 }

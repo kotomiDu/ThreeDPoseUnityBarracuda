@@ -20,7 +20,7 @@ public class VideoCapture : MonoBehaviour
     private int bgWidth, bgHeight;
 
     public RenderTexture MainTexture { get; private set; }
-
+    // it is different from the maintexture(game object) in unity editot
     /// <summary>
     /// Initialize Camera
     /// </summary>
@@ -73,6 +73,7 @@ public class VideoCapture : MonoBehaviour
         var sd = VideoScreen.GetComponent<RectTransform>();
         sd.sizeDelta = new Vector2(videoScreenWidth, (int)(videoScreenWidth * VideoPlayer.clip.height / VideoPlayer.clip.width));
         VideoScreen.texture = videoTexture;
+      
 
         VideoPlayer.Play();
 
@@ -80,6 +81,7 @@ public class VideoCapture : MonoBehaviour
 
         VideoBackground.transform.localScale = new Vector3(aspect, 1, 1) * VideoBackgroundScale;
         VideoBackground.GetComponent<Renderer>().material.mainTexture = videoTexture;
+        //VideoBackground(game object) is big image
 
         InitMainTexture();
     }
@@ -111,7 +113,9 @@ public class VideoCapture : MonoBehaviour
         camera.allowMSAA = false;
         camera.allowHDR = false;
 
-        MainTexture = new RenderTexture(bgWidth, bgHeight, 0, RenderTextureFormat.RGB565, RenderTextureReadWrite.sRGB)
+        //MainTexture = new RenderTexture(bgWidth, bgHeight, 0, RenderTextureFormat.RGB565, RenderTextureReadWrite.sRGB)
+        //this is small image size.
+        MainTexture = new RenderTexture(bgWidth, bgHeight, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB)
         {
             useMipMap = false,
             autoGenerateMips = false,
@@ -121,5 +125,6 @@ public class VideoCapture : MonoBehaviour
 
         camera.targetTexture = MainTexture;
         if (InputTexture.activeSelf) InputTexture.GetComponent<Renderer>().material.mainTexture = MainTexture;
+        //inputTexture(gameobject) is to show small image
     }
 }
