@@ -245,7 +245,8 @@ public class VNectBarracudaRunner : MonoBehaviour
 
         Marshal.Copy(heatMap3DPtr, heatMap3D, 0, heatMap3DSize);
         Marshal.FreeCoTaskMem(heatMap3DPtr);
-        Debug.Log(offset3D[100]);
+        System.IO.File.WriteAllText("offset3D_openvino.txt", string.Join(" ", offset3D));
+        System.IO.File.WriteAllText("heatMap3D_openvino.txt", string.Join(" ", heatMap3D));
         // Init VNect model
         jointPoints = VNectModel.Init();
 
