@@ -148,7 +148,7 @@ public class VNectBarracudaRunner : MonoBehaviour
     [DllImport("network.dll", EntryPoint = "initModel")]
     private static extern bool initModel(IntPtr model, string modelpath, string device);
     [DllImport("network.dll", EntryPoint = "inferModel")]
-    private static extern void inferModel(IntPtr model
+    private static extern bool inferModel(IntPtr model
         , IntPtr texture1, IntPtr texture2, IntPtr texture3, int width, int height
         ,  int offset3Dsize, int heatmap3Dsize,out IntPtr offset3Dresult, out IntPtr heatmap3Dresult);
 
@@ -229,7 +229,7 @@ public class VNectBarracudaRunner : MonoBehaviour
         // openvino execution
         Texture2D readableTex = duplicateTexture(InitImg);
 
-        inferModel(context
+        bool sucess = inferModel(context
         , getTexPtr(readableTex)
         , getTexPtr(readableTex)
         , getTexPtr(readableTex)
@@ -239,14 +239,13 @@ public class VNectBarracudaRunner : MonoBehaviour
         , heatMap3DSize
         , out offset3DPtr
         , out heatMap3DPtr);
-
+       
         Marshal.Copy(offset3DPtr, offset3D, 0, offset3DSize);
         Marshal.FreeCoTaskMem(offset3DPtr);
-
         Marshal.Copy(heatMap3DPtr, heatMap3D, 0, heatMap3DSize);
         Marshal.FreeCoTaskMem(heatMap3DPtr);
-        System.IO.File.WriteAllText("offset3D_openvino.txt", string.Join(" ", offset3D));
-        System.IO.File.WriteAllText("heatMap3D_openvino.txt", string.Join(" ", heatMap3D));
+        //System.IO.File.WriteAllText("offset3D_openvino.txt", string.Join(" ", offset3D));
+        //System.IO.File.WriteAllText("heatMap3D_openvino.txt", string.Join(" ", heatMap3D));
         // Init VNect model
         jointPoints = VNectModel.Init();
 
