@@ -187,7 +187,10 @@ public class VNectBarracudaRunner : MonoBehaviour
         context = createModel();
         string modelPath = Application.dataPath + "/Scripts/Model/OV_FP32/Resnet34_3inputs_448x448_20200609.xml";
         bool success = initModel(context, modelPath, "CPU");
-        Debug.Log(success);
+        if (success)
+        {
+            Debug.Log("Successfully load openvino model");
+        }
 
         StartCoroutine("WaitLoad");
     }
@@ -300,7 +303,7 @@ public class VNectBarracudaRunner : MonoBehaviour
         else
         {
             //ovinputs[inputName_3].Dispose();
-
+    
             ovinputs[inputName_3] = ovinputs[inputName_2];
             ovinputs[inputName_2] = ovinputs[inputName_1];
             ovinputs[inputName_1] = ovinput;
@@ -373,7 +376,6 @@ public class VNectBarracudaRunner : MonoBehaviour
             Marshal.FreeCoTaskMem(heatMap3DPtr);
         }
 
-        Debug.Log(heatMap3D[1000]);
         yield return new WaitForSeconds(WaitTimeModelLoad);
 
         PredictPose();
