@@ -185,8 +185,8 @@ public class VNectBarracudaRunner : MonoBehaviour
 
         //????  Init openvino Model
         context = createModel();
-        string modelPath = Application.dataPath + "/Scripts/Model/OV_FP32/Resnet34_3inputs_448x448_20200609.xml";
-        bool success = initModel(context, modelPath, "CPU");
+        string modelPath = Application.dataPath + "/Scripts/Model/OV_FP16/Resnet34_3inputs_448x448_20200609.xml";
+        bool success = initModel(context, modelPath, "GPU.0");
         if (success)
         {
             Debug.Log("Successfully load openvino model");
@@ -376,7 +376,8 @@ public class VNectBarracudaRunner : MonoBehaviour
             Marshal.FreeCoTaskMem(heatMap3DPtr);
         }
 
-        yield return new WaitForSeconds(WaitTimeModelLoad);
+        // yield return new WaitForSeconds(WaitTimeModelLoad);
+        yield return null;
 
         PredictPose();
     }
