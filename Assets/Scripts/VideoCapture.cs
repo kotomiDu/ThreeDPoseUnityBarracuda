@@ -20,7 +20,7 @@ public class VideoCapture : MonoBehaviour
     private int bgWidth, bgHeight;
 
     public RenderTexture MainTexture { get; private set; }
-    // it is different from the maintexture(game object) in unity editot
+    // it is a texture, which is different from the maintexture(GameObject) in unity editor
     /// <summary>
     /// Initialize Camera
     /// </summary>
@@ -70,7 +70,7 @@ public class VideoCapture : MonoBehaviour
         VideoPlayer.renderMode = VideoRenderMode.RenderTexture;
         VideoPlayer.targetTexture = videoTexture;
 
-        var sd = VideoScreen.GetComponent<RectTransform>();
+        var sd = VideoScreen.GetComponent<RectTransform>(); //VideoScreen: display the original video
         sd.sizeDelta = new Vector2(videoScreenWidth, (int)(videoScreenWidth * VideoPlayer.clip.height / VideoPlayer.clip.width));
         VideoScreen.texture = videoTexture;
       
@@ -81,17 +81,17 @@ public class VideoCapture : MonoBehaviour
 
         VideoBackground.transform.localScale = new Vector3(aspect, 1, 1) * VideoBackgroundScale;
         VideoBackground.GetComponent<Renderer>().material.mainTexture = videoTexture;
-        //VideoBackground(game object) is big image
+        //VideoBackground(MainTexture) is small image
 
         InitMainTexture();
     }
 
     /// <summary>
-    /// Initialize Main Texture
+    /// Initialize Main Texture, which is the input image for model inference
     /// </summary>
     private void InitMainTexture()
     {
-        GameObject go = new GameObject("MainTextureCamera", typeof(Camera));
+        GameObject go = new GameObject("MainTextureCamera", typeof(Camera)); // it is under GameObject MainTexture
 
         go.transform.parent = VideoBackground.transform;
         go.transform.localScale = new Vector3(-1.0f, -1.0f, 1.0f);
